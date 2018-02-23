@@ -2,6 +2,7 @@ package com.plugish.woominecraft.Util;
 
 import com.plugish.woominecraft.Pojo.CompletedOrders;
 import com.plugish.woominecraft.Pojo.OrderResponse;
+import org.glassfish.jersey.client.ClientConfig;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -16,12 +17,8 @@ import java.util.ArrayList;
 public class Orders {
 
 	public OrderResponse getAllOrders( String Server ) throws Exception {
-		Client client = ClientBuilder.newClient();
-//		Client client = ClientBuilder.newClient(  );
+		Client client = ClientBuilder.newClient( new ClientConfig().register( OrderResponse.class ) );
 		Response response = client.target( Server ).request( MediaType.APPLICATION_JSON ).get();
-
-		System.out.println( response.getStatus() );
-		System.out.println( Server );
 
 		OrderResponse orderResponses = response.readEntity( OrderResponse.class );
 		client.close();

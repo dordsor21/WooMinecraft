@@ -35,14 +35,14 @@
                             <pattern>javax.ws.rs</pattern>
                             <shadedPattern>com.plugish.javax.ws.rs</shadedPattern>
                         </relocation>
-                        <relocation>
-                            <pattern>org.glassfish.jersey.core</pattern>
-                            <shadedPattern>com.plugish.org.glassfish.jersey.core</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org.glassfish.jersey.media</pattern>
-                            <shadedPattern>com.plugish.org.glassfish.jersey.media</shadedPattern>
-                        </relocation>
+                        <!--<relocation>-->
+                            <!--<pattern>org.glassfish.jersey.core</pattern>-->
+                            <!--<shadedPattern>com.plugish.org.glassfish.jersey.core</shadedPattern>-->
+                        <!--</relocation>-->
+                        <!--<relocation>-->
+                            <!--<pattern>org.glassfish.jersey.media</pattern>-->
+                            <!--<shadedPattern>com.plugish.org.glassfish.jersey.media</shadedPattern>-->
+                        <!--</relocation>-->
                     </relocations>
                 </configuration>
                 <executions>
@@ -84,7 +84,7 @@
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
-            <version>2.25.1</version>
+            <version>2.25</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
