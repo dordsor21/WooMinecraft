@@ -1,23 +1,22 @@
 package com.plugish.woominecraft.Util;
 
 import com.plugish.woominecraft.WooMinecraft;
-import org.bukkit.scheduler.BukkitRunnable;
 
-public class BukkitRunner extends BukkitRunnable {
+public class BukkitRunner implements Runnable {
 
-	public final WooMinecraft plugin;
+    public final WooMinecraft plugin;
 
-	public BukkitRunner( WooMinecraft plugin ) {
-		this.plugin = plugin;
-	}
+    public BukkitRunner() {
+        this.plugin = WooMinecraft.instance;
+    }
 
-	public void run() {
-		try {
-			plugin.check();
-		} catch ( Exception e ) {
-			plugin.getLogger().warning( e.getMessage() );
-			e.printStackTrace();
-		}
-	}
+    public void run() {
+        try {
+            plugin.check();
+        } catch (Exception e) {
+            plugin.getLogger().warning(e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
 }

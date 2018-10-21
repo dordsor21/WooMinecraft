@@ -3,23 +3,23 @@
  * Author:	   Jerry Wood
  * Author URI: http://plugish.com
  * License:	   GPLv2
- * 
+ *
  * Copyright 2014 All rights Reserved
- * 
+ *
  */
 package com.plugish.woominecraft;
 
 import com.plugish.woominecraft.Commands.WooCommand;
 import com.plugish.woominecraft.Lang.LangSetup;
+import com.plugish.woominecraft.Listeners.PlayerListener;
 import com.plugish.woominecraft.Util.BukkitRunner;
+import com.plugish.woominecraft.Util.CommandRunner;
 import com.plugish.woominecraft.Util.RcHttp;
 import org.apache.http.client.utils.URIBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitScheduler;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.HashMap;
@@ -28,256 +28,204 @@ import java.util.List;
 
 public final class WooMinecraft extends JavaPlugin {
 
-	public static WooMinecraft instance;
+    public static WooMinecraft instance;
 
-	private YamlConfiguration l10n;
+    public HashMap<String, JSONObject> cache;
 
-	@Override
-	public void onEnable() {
-		instance = this;
-		YamlConfiguration config = (YamlConfiguration) getConfig();
+    private YamlConfiguration l10n;
 
-		// Save the default config.yml
-		try{
-			saveDefaultConfig();
-		} catch ( IllegalArgumentException e ) {
-			getLogger().warning( e.getMessage() );
-		}
+    @Override
+    public void onEnable() {
+        instance = this;
+        YamlConfiguration config = (YamlConfiguration) getConfig();
+        cache = new HashMap<>();
 
-		String lang = getConfig().getString("lang");
-		if ( lang == null ) {
-			getLogger().warning( "No default l10n set, setting to english." );
-		}
+        // Save the default config.yml
+        try {
+            saveDefaultConfig();
+        } catch (IllegalArgumentException e) {
+            getLogger().warning(e.getMessage());
+        }
 
-		initCommands();
-		getLogger().info( this.getLang( "log.com_init" ));
+        String lang = getConfig().getString("lang");
+        if (lang == null) {
+            getLogger().warning("No default l10n set, setting to english.");
+        }
 
-		// Setup the scheduler
-		BukkitRunner scheduler = new BukkitRunner(instance);
-		scheduler.runTaskTimerAsynchronously( instance, config.getInt( "update_interval" ) * 20, config.getInt( "update_interval" ) * 20 );
+        initCommands();
+        getLogger().info(this.getLang("log.com_init"));
 
-		getLogger().info( this.getLang( "log.enabled" ) );
-	}
+        new PlayerListener();
 
-	@Override
-	public void onDisable() {
-		getLogger().info( this.getLang( "log.com_init" ) );
-	}
+        // Setup the scheduler
+        Bukkit.getScheduler().runTaskTimerAsynchronously(instance, new BukkitRunner(), config.getInt("update_interval") * 20, config.getInt("update_interval") * 20);
 
-	/**
-	 * Helper method to get localized strings
-	 *
-	 * Much better than typing this.l10n.getString...
-	 * @param path Path to the config var
-	 * @return String
-	 */
-	public String getLang( String path ) {
-		if ( null == this.l10n ) {
+        getLogger().info(this.getLang("log.enabled"));
+    }
 
-			LangSetup lang = new LangSetup( instance );
-			l10n = lang.loadConfig();
-		}
+    @Override
+    public void onDisable() {
+        getLogger().info(this.getLang("log.com_init"));
+    }
 
-		return this.l10n.getString( path );
-	}
+    /**
+     * Helper method to get localized strings
+     * <p>
+     * Much better than typing this.l10n.getString...
+     *
+     * @param path Path to the config var
+     * @return String
+     */
+    public String getLang(String path) {
+        if (null == this.l10n) {
 
-	/**
-	 * Validates the basics needed in the config.yml file.
-	 *
-	 * Multiple reports of user configs not having keys etc... so this will ensure they know of this
-	 * and will not allow checks to continue if the required data isn't set in the config.
-	 *
-	 * @throws Exception Reason for failing to validate the config.
-	 */
-	private void validateConfig() throws Exception {
+            LangSetup lang = new LangSetup(instance);
+            l10n = lang.loadConfig();
+        }
 
-		if ( 1 > this.getConfig().getString( "url" ).length() ) {
-			throw new Exception( "Server URL is empty, check config." );
-		} else if ( this.getConfig().getString( "url" ).equals( "http://playground.dev" ) ) {
-			throw new Exception( "URL is still the default URL, check config." );
-		} else if ( 1 > this.getConfig().getString( "key" ).length() ) {
-			throw new Exception( "Server Key is empty, this is insecure, check config." );
-		}
-	}
+        return this.l10n.getString(path);
+    }
 
-	/**
-	 * Checks all online players against the
-	 * website's database looking for pending donation deliveries
-	 *
-	 * @return boolean
-	 * @throws Exception Why the operation failed.
-	 */
-	public boolean check() throws Exception {
+    /**
+     * Validates the basics needed in the config.yml file.
+     * <p>
+     * Multiple reports of user configs not having keys etc... so this will ensure they know of this
+     * and will not allow checks to continue if the required data isn't set in the config.
+     *
+     * @throws Exception Reason for failing to validate the config.
+     */
+    private void validateConfig() throws Exception {
 
-		// Make 100% sure the config has at least a key and url
-		this.validateConfig();
+        if (1 > this.getConfig().getString("url").length()) {
+            throw new Exception("Server URL is empty, check config.");
+        } else if (this.getConfig().getString("url").equals("http://playground.dev")) {
+            throw new Exception("URL is still the default URL, check config.");
+        } else if (1 > this.getConfig().getString("key").length()) {
+            throw new Exception("Server Key is empty, this is insecure, check config.");
+        }
+    }
 
-		URIBuilder uriBuilder = new URIBuilder( getConfig().getString( "url" ) );
-		uriBuilder.addParameter( "wmc_key", getConfig().getString( "key" ) );
+    /**
+     * Checks all online players against the
+     * website's database looking for pending donation deliveries
+     *
+     * @return boolean
+     * @throws Exception Why the operation failed.
+     */
+    public boolean check() throws Exception {
 
-		String url = uriBuilder.toString();
-		if ( url.equals( "" ) ) {
-			throw new Exception( "WMC URL is empty for some reason" );
-		}
+        // Make 100% sure the config has at least a key and url
+        this.validateConfig();
 
-		RcHttp rcHttp = new RcHttp( this );
-		String httpResponse = rcHttp.request( url );
+        URIBuilder uriBuilder = new URIBuilder(getConfig().getString("url"));
+        uriBuilder.addParameter("wmc_key", getConfig().getString("key"));
 
-		// No response, kill out here.
-		if ( httpResponse.equals( "" ) ) {
-			return false;
-		}
+        String url = uriBuilder.toString();
+        if (url.equals("")) {
+            throw new Exception("WMC URL is empty for some reason");
+        }
 
-		// Grab the pending commands
-		JSONObject pendingCommands = new JSONObject( httpResponse );
+        RcHttp rcHttp = new RcHttp(this);
+        String httpResponse = rcHttp.request(url);
 
-		// If the request was not a WordPress success, we may have a message
-		if ( ! pendingCommands.getBoolean( "success" ) ) {
+        // No response, kill out here.
+        if (httpResponse.equals("")) {
+            return false;
+        }
 
-			wmc_log( "Server response was false, checking for message and bailing.", 2 );
+        // Grab the pending commands
+        JSONObject pendingCommands = new JSONObject(httpResponse);
 
-			// See if we have a data object.
-			Object dataCheck = pendingCommands.get( "data" );
-			if ( dataCheck instanceof JSONObject ) {
-				JSONObject errors = pendingCommands.getJSONObject( "data" );
-				String msg = errors.getString( "msg" );
-				// Throw the message as an exception.
-				throw new Exception( msg );
-			}
+        // If the request was not a WordPress success, we may have a message
+        if (!pendingCommands.getBoolean("success")) {
 
-			return false;
-		}
+            wmc_log("Server response was false, checking for message and bailing.", 2);
 
-		Object dataCheck = pendingCommands.get( "data" );
-		if ( !( dataCheck instanceof JSONObject ) ) {
-			wmc_log( "No data to process, or data is invalid." );
-			return false;
-		}
+            // See if we have a data object.
+            Object dataCheck = pendingCommands.get("data");
+            if (dataCheck instanceof JSONObject) {
+                JSONObject errors = pendingCommands.getJSONObject("data");
+                String msg = errors.getString("msg");
+                // Throw the message as an exception.
+                throw new Exception(msg);
+            }
 
-		JSONObject data = pendingCommands.getJSONObject( "data" );
-		Iterator<String> playerNames = data.keys();
-		JSONArray processedData = new JSONArray();
+            return false;
+        }
 
-		wmc_log( "Player names acquired -- walking over them now." );
-		while ( playerNames.hasNext() ) {
-			// Walk over players.
-			String playerName = playerNames.next();
-			wmc_log( "Checking for player: " + playerName );
+        Object dataCheck = pendingCommands.get("data");
+        if (!(dataCheck instanceof JSONObject)) {
+            wmc_log("No data to process, or data is invalid.");
+            return false;
+        }
 
-			@SuppressWarnings( "deprecation" )
-			Player player = Bukkit.getServer().getPlayerExact( playerName );
-			if ( player == null ) {
-				wmc_log( "Player not found.", 2 );
-				continue;
-			}
+        JSONObject data = pendingCommands.getJSONObject("data");
+        Iterator<String> playerNames = data.keys();
 
-			/*
-			 * Use white-list worlds check, if it's set.
-			 */
-			if ( getConfig().isSet( "whitelist-worlds" ) ) {
-				List<String> whitelistWorlds = getConfig().getStringList( "whitelist-worlds" );
-				String playerWorld = player.getWorld().getName();
-				if ( ! whitelistWorlds.contains( playerWorld ) ) {
-					wmc_log( "Player " + player.getDisplayName() + " was in world " + playerWorld + " which is not in the white-list, no commands were ran." );
-					continue;
-				}
-			}
-			
-			// Get all orders for the current player.
-			JSONObject playerOrders = data.getJSONObject( playerName );
-			Iterator<String> orderIDs = playerOrders.keys();
+        wmc_log("Player names acquired -- walking over them now.");
+        while (playerNames.hasNext()) {
+            // Walk over players.
+            String playerName = playerNames.next();
+            wmc_log("Checking for player: " + playerName);
 
-			wmc_log( "Walking over orders for player.", 1 );
-			while ( orderIDs.hasNext() ) {
-				String orderID = orderIDs.next();
-				wmc_log( "===========================" );
+            @SuppressWarnings("deprecation")
+            Player player = Bukkit.getServer().getPlayerExact(playerName);
+            if (player == null) {
+                wmc_log("Player not found. Adding player data to cache to run when they log on.", 2);
+                cache.put(playerName.toLowerCase(), data.getJSONObject(playerName));
+                continue;
+            }
 
-				// Get all commands per order
-				JSONArray commands = playerOrders.getJSONArray( orderID );
+            /*
+             * Use white-list worlds check, if it's set.
+             */
+            if (getConfig().isSet("whitelist-worlds")) {
+                List<String> whitelistWorlds = getConfig().getStringList("whitelist-worlds");
+                String playerWorld = player.getWorld().getName();
+                if (!whitelistWorlds.contains(playerWorld)) {
+                    wmc_log("Player " + player.getDisplayName() + " was in world " + playerWorld + " which is not in the white-list, no commands were ran.");
+                    continue;
+                }
+            }
 
-				wmc_log( "Processing command for order: " + orderID );
-                wmc_log( "===========================" );
-				wmc_log( "Command Set: " + commands.toString() );
+            // Get all orders for the current player.
+            JSONObject playerOrders = data.getJSONObject(playerName);
 
-				// Walk over commands, executing them one by one.
-				for ( Integer x = 0; x < commands.length(); x++ ) {
-					String baseCommand = commands.getString( x );
+            Bukkit.getScheduler().runTask(instance, new CommandRunner(player, playerOrders));
+        }
 
-					wmc_log( "Dirty Command: " + baseCommand );
+        wmc_log("All order data processed.");
 
-					final String command = baseCommand.replace( "%s", playerName ).replace( "&quot;", "\"" ).replace( "&#039;", "'" );
+        return true;
+    }
 
-					wmc_log( "Clean Command: " + command );
+    public void wmc_log(String message) {
+        this.wmc_log(message, 1);
+    }
 
-					BukkitScheduler scheduler = Bukkit.getServer().getScheduler();
+    private void wmc_log(String message, Integer level) {
 
-					// TODO: Make this better... nesting a 'new' class while not a bad idea is bad practice.
-					scheduler.scheduleSyncDelayedTask( instance, new Runnable() {
-						@Override
-						public void run() {
-							Bukkit.getServer().dispatchCommand( Bukkit.getServer().getConsoleSender(), command );
-						}
-					}, 20L );
-				}
-				processedData.put( Integer.parseInt( orderID ) );
-			}
-		}
+        if (!this.getConfig().getBoolean("debug")) {
+            return;
+        }
 
-		if ( 1 > processedData.length() ) {
-			wmc_log( "Processed zero data, exiting.", 2 );
-			return false;
-		}
+        switch (level) {
+            case 1:
+                this.getLogger().info(message);
+                break;
+            case 2:
+                this.getLogger().warning(message);
+                break;
+            case 3:
+                this.getLogger().severe(message);
+                break;
+        }
+    }
 
-		wmc_log( "Sending data to the website." );
-
-		HashMap< String, String > postData = new HashMap<>();
-		postData.put( "processedOrders", processedData.toString() );
-
-		String updatedCommandSet = rcHttp.send( url, postData );
-		JSONObject updatedResponse = new JSONObject( updatedCommandSet );
-		boolean status = updatedResponse.getBoolean( "success" );
-
-		if ( ! status ) {
-			Object dataSet = updatedResponse.get( "data" );
-			if ( dataSet instanceof JSONObject ) {
-				String message = ( ( JSONObject ) dataSet ).getString( "msg" );
-				throw new Exception( message );
-			}
-			throw new Exception( "Failed sending updated orders to the server, got this instead:" + updatedCommandSet );
-		}
-
-		wmc_log( "All order data processed." );
-
-		return true;
-	}
-
-	public void wmc_log( String message ) {
-		this.wmc_log( message, 1 );
-	}
-
-	private void wmc_log(String message, Integer level) {
-
-		if ( ! this.getConfig().getBoolean( "debug" ) ) {
-			return;
-		}
-
-		switch ( level ) {
-			case 1:
-				this.getLogger().info( message );
-				break;
-			case 2:
-				this.getLogger().warning( message );
-				break;
-			case 3:
-				this.getLogger().severe( message );
-				break;
-		}
-	}
-
-	/**
-	 * Initialize Commands
-	 */
-	private void initCommands() {
-		getCommand( "woo" ).setExecutor( new WooCommand() );
-	}
+    /**
+     * Initialize Commands
+     */
+    private void initCommands() {
+        getCommand("woo").setExecutor(new WooCommand());
+    }
 }
