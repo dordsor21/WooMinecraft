@@ -179,7 +179,7 @@ public final class WooMinecraft extends JavaPlugin {
             /*
              * Use white-list worlds check, if it's set.
              */
-            if (getConfig().isSet("whitelist-worlds")) {
+            if (getConfig().getBoolean("enable-world-whitelist")) {
                 List<String> whitelistWorlds = getConfig().getStringList("whitelist-worlds");
                 String playerWorld = player.getWorld().getName();
                 if (!whitelistWorlds.contains(playerWorld)) {

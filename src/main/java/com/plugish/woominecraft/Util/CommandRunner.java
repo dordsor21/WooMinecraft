@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 
 public class CommandRunner implements Runnable {
 
@@ -25,6 +26,14 @@ public class CommandRunner implements Runnable {
 
     public void run() {
         try {
+            if (plugin.getConfig().getBoolean("enable-world-whitelist")) {
+                List<String> whitelistWorlds = plugin.getConfig().getStringList("whitelist-worlds");
+                String playerWorld = player.getWorld().getName();
+                if (!whitelistWorlds.contains(playerWorld)) {
+                    plugin.wmc_log("Player " + player.getDisplayName() + " was in world " + playerWorld + " which is not in the white-list, no commands were ran.");
+                    return;
+                }
+            }
             URIBuilder uriBuilder = new URIBuilder(plugin.getConfig().getString("url"));
             uriBuilder.addParameter("wmc_key", plugin.getConfig().getString("key"));
 

@@ -104,9 +104,6 @@ public class RcHttp {
         post.setEntity(new UrlEncodedFormEntity(urlParameters));
 
         CloseableHttpResponse response = client.execute(post);
-        if (200 != response.getStatusLine().getStatusCode()) {
-            throw new Exception("Status code is not 200 got: " + response.getStatusLine().getStatusCode());
-        }
 
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 
@@ -123,6 +120,17 @@ public class RcHttp {
             Length = 128;
         }
 
+        if (200 != response.getStatusLine().getStatusCode()) {       // Some debug logging.
+            if (plugin.getConfig().getBoolean("debug", false)) {
+                plugin.wmc_log("Sending Request");
+                plugin.wmc_log("URL Config Field: " + plugin.getConfig().getString("url", "empty"));
+                plugin.wmc_log("Headers: " + Arrays.toString(response.getAllHeaders()));
+                plugin.wmc_log("HTTP Response Code: " + response.getStatusLine().getStatusCode());
+                plugin.wmc_log("Content Body Snippet (128 chars): " + resultString.substring(0, Length));
+            }
+            throw new Exception("Status code is not 200 got: " + response.getStatusLine().getStatusCode());
+        }
+        
         // Some debug logging.
         if (plugin.getConfig().getBoolean("debug", false)) {
             plugin.wmc_log("Sending Request");
